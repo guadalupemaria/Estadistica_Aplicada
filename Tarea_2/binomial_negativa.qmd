@@ -1,0 +1,13 @@
+---
+title: "Distribución Binomial Negativa"
+lang: es
+---
+
+
+```{=html}
+<style>
+main.content {
+text-align: justify}
+</style>
+```
+

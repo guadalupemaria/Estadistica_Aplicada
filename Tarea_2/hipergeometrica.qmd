@@ -9,3 +9,465 @@ main.content {
 text-align: justify}
 </style>
 ```
+
+### 3.6 Rincón(2014)Introducción a la probabilidad
+
+## Distribución Hiperheométrica
+Esta distribución de probabilidad surge en el contexto de la toma de una muestra de un conjunto de objetos de dos tipos. Supongamos que tenemos $N$ objetos dentro de una caja, de los cuales $K$ son de un primer tipo y $N - K$ son de un segundo tipo. 
+
+Los objetos del primer
+tipo pueden corresponder a art´ıculos en buen estado y los del segundo tipo
+a art´ıculos en mal estado, o bien a personas con una cierta caracter´ıstica y
+a aquellas que no poseen dicha caracter´ıstica.
+
+##  3.5 Función de masa probabilidad:
+
+$$f(x) =
+\begin{cases}
+\frac{\binom{K}{x}\binom{N - K}{n - x}}{\binom{N}{n}} & \text{si } x = 0, 1, \ldots, n, \\
+0 & \text{en otro caso}.
+\end{cases}$$
+
+**Restricción:** 
+
+$n \leq \min \{K, N - K\}$
+
+Decimos entonces que $X$ tiene una distribución hipergeométrica con parámetros $N, K y n$, y escribimos $X$ „ hipergeo $(N,K,n)$.
+
+
+##Interpretación de la Fórmula
+
+- $\binom{K}{x}$: formas de elegir $x$ éxitos de los $K$ disponibles
+- $\binom{N - K}{n - x}$: formas de elegir $n - x$ fracasos de los $N - K$ disponibles  
+- $\binom{N}{n}$: total de formas de elegir $n$ objetos de $N$
+
+## 3.6 DISTRIBUCIÓN HIPERGEOMÉTRICA
+
+```{r}
+library(ggplot2)
+```
+
+
+```{r}
+#| label: pdf-hipergeometrica
+#| fig-cap: "Función de masa de probabilidad hipergeométrca"
+
+# Ejemplo del libro (Rincón (2014)Introducción a la probabilidad) : 
+# N=20, K=7, n=5
+N <- 20
+K <- 7
+n <- 5
+
+x_vals <- 0:n
+probabilidades <- dhyper(x_vals, m = K, n = N - K, k = n)
+
+df <- data.frame(
+  x = x_vals,
+  probabilidad = probabilidades
+)
+
+# Tabla de probabilidades
+cat("Distribución Hipergeométrica: N =", N, ", K =", K, ", n =", n, "\n")
+print(df)
+
+# Visualización
+ggplot(df, aes(x = factor(x), y = probabilidad)) +
+  geom_col(fill = "lightgreen", alpha = 0.7) +
+  geom_point(size = 2, color = "magenta") +
+  labs(title = "Distribución Hipergeométrica",
+       subtitle = paste("N =", N, ", K =", K, ", n =", n),
+       x = "x (número de éxitos en la muestra)",
+       y = "Probabilidad") +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, max(probabilidades) * 1.1))
+```
+
+**Esperanza y Varianza**
+
+Si $X \sim \text{hipergeo}(N, K, n)$, entonces:
+
+- **Esperanza:** $E(X) = n \frac{K}{N}$
+- **Varianza:** $\text{Var}(X) = n \frac{K}{N} \frac{N - K}{N} \frac{N - n}{N - 1}$
+
+```{r}
+#| label: medidas-hipergeometrica
+#| fig-cap: "Medidas Descriptivas de la Distribución Hipergeométrica"
+
+hipergeo_measures <- function(N, K, n) {
+  esperanza <- n * (K / N)
+  varianza <- n * (K / N) * ((N - K) / N) * ((N - n) / (N - 1))
+  
+  return(list(
+    esperanza = esperanza,
+    varianza = varianza,
+    desviacion = sqrt(varianza)
+  ))
+}
+
+# Calcular para diferentes parámetros
+parametros <- list(
+  c(N = 20, K = 5, n = 3),
+  c(N = 50, K = 7, n = 8),
+  c(N = 100, K = 25, n = 15)
+)
+
+resultados <- data.frame()
+for(param in parametros) {
+  medidas <- hipergeo_measures(param["N"], param["K"], param["n"])
+  resultados <- rbind(resultados, data.frame(
+    N = param["N"],
+    K = param["K"],
+    n = param["n"],
+    Esperanza = round(medidas$esperanza, 4),
+    Varianza = round(medidas$varianza, 4),
+    Desviacion = round(medidas$desviacion, 4)
+  ))
+}
+
+knitr::kable(resultados, caption = "Medidas Descriptivas para Diferentes Parámetros")
+```
+## Relación
+
+1. **Convergencia a la Binomial:** Cuando $N \to \infty$ y $K \to \infty$ manteniendo $K/N = p$, la distribución hipergeométrica converge a la binomial $\text{Bin}(n, p)$.
+
+2. **Caso n = 1:** Cuando $n = 1$, la distribución hipergeométrica se reduce a Bernoulli con $p = K/N$.
+
+### Comportamiento de la Moda
+
+La distribución hipergeométrica puede ser unimodal o bimodal dependiendo de los parámetros. La moda se encuentra en:
+
+$$x^* = \left\lfloor \frac{(n+1)(K+1)}{N+2} \right\rfloor$$
+
+```{r}
+#| label: moda-hipergeometrica
+#| fig-cap: "Comportamiento de la Moda en la Distribución Hipergeométrica"
+
+# Ejemplo de distribución bimodal
+N_bimodal <- 30
+K_bimodal <- 15
+n_bimodal <- 10
+
+x_bimodal <- 0:n_bimodal
+prob_bimodal <- dhyper(x_bimodal, m = K_bimodal, n = N_bimodal - K_bimodal, k = n_bimodal)
+
+# Calcular moda teórica
+moda_teorica <- floor((n_bimodal + 1) * (K_bimodal + 1) / (N_bimodal + 2))
+
+df_bimodal <- data.frame(
+  x = x_bimodal,
+  probabilidad = prob_bimodal,
+  tipo = ifelse(x_bimodal == moda_teorica | x_bimodal == moda_teorica + 1, "Moda", "Normal")
+)
+
+ggplot(df_bimodal, aes(x = factor(x), y = probabilidad, fill = tipo)) +
+  geom_col(alpha = 0.7) +
+  labs(title = "Ejemplo de Distribución Bimodal",
+       subtitle = paste("N =", N_bimodal, ", K =", K_bimodal, ", n =", n_bimodal),
+       x = "x",
+       y = "Probabilidad") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Moda" = "lightblue", "Normal" = "lightpink"))
+```
+
+## Teorema Central del Límite para la Distribución Hipergeométrica
+
+El Teorema Central del Límite (TCL) también se aplica a la distribución hipergeométrica. Cuando el tamaño de la muestra es grande, la distribución de la variable hipergeométrica puede aproximarse por una distribución normal.
+
+### Aproximación Normal
+
+Si $X \sim \text{hipergeo}(N, K, n)$, entonces para $n$ suficientemente grande:
+
+$$X \approx N\left(\mu = n\frac{K}{N}, \sigma^2 = n\frac{K}{N}\frac{N-K}{N}\frac{N-n}{N-1}\right)$$
+
+La aproximación es buena cuando $n$ es grande y las proporciones no están muy cerca de 0 o 1.
+
+```{r}
+#| label: tcl-hipergeometrica
+#| fig-cap: "Teorema Central del Límite para la Distribución Hipergeométrica"
+
+set.seed(456)
+
+# Parámetros para demostrar TCL
+N_tcl <- 1000
+K_tcl <- 300
+n_tcl <- 100
+num_simulaciones <- 1000
+
+# Simular promedios de muestras hipergeométricas
+resultados_tcl <- data.frame()
+
+for(n_muestra in c(10, 30, 50, 100)) {
+  promedios <- replicate(num_simulaciones, {
+    mean(rhyper(n_muestra, m = K_tcl, n = N_tcl - K_tcl, k = n_tcl))
+  })
+  
+  resultados_tcl <- rbind(resultados_tcl, 
+                         data.frame(
+                           n_muestra = n_muestra,
+                           promedio = promedios
+                         ))
+}
+
+# Calcular parámetros teóricos
+mu_teorico <- n_tcl * (K_tcl / N_tcl)
+sigma2_teorico <- n_tcl * (K_tcl / N_tcl) * ((N_tcl - K_tcl) / N_tcl) * ((N_tcl - n_tcl) / (N_tcl - 1))
+
+# Graficar distribuciones de promedios
+ggplot(resultados_tcl, aes(x = promedio)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "magenta", alpha = 0.7) +
+  geom_density(color = "yellow", linewidth = 1) +
+  stat_function(fun = dnorm, 
+                args = list(mean = mu_teorico, sd = sqrt(sigma2_teorico)), 
+                color = "red", linewidth = 1, linetype = "dashed") +
+  facet_wrap(~n_muestra, scales = "free", labeller = label_both) +
+  labs(title = "Teorema Central del Límite - Distribución Hipergeométrica",
+       subtitle = paste("Línea roja: Distribución Normal Teórica (μ =", round(mu_teorico, 2), ")"),
+       x = "Promedio Muestral", 
+       y = "Densidad") +
+  theme_minimal()
+
+# Prueba de normalidad para n grande
+cat("Prueba de Normalidad para n = 100:\n")
+cat("==================================\n")
+shapiro_test <- shapiro.test(resultados_tcl$promedio[resultados_tcl$n_muestra == 100])
+cat("Estadístico W:", round(shapiro_test$statistic, 4), "\n")
+cat("Valor p:", round(shapiro_test$p.value, 4), "\n")
+```
+
+**Condiciones para una Buena Aproximación**
+
+La aproximación normal funciona bien cuando:
+- $n > 30$ (tamaño de muestra grande)
+- $np > 5$ y $n(1-p) > 5$ donde $p = K/N$
+- La población $N$ es grande comparada con $n$
+
+**Aplicación Práctica**
+
+La aproximación normal es útil para calcular probabilidades de manera más sencilla:
+
+$$P(a \leq X \leq b) \approx \Phi\left(\frac{b + 0.5 - \mu}{\sigma}\right) - \Phi\left(\frac{a - 0.5 - \mu}{\sigma}\right)$$
+
+donde se usa una corrección por continuidad.
+
+## Simulación y Validación
+
+```{r}
+#| label: simulacion-hipergeometrica
+#| fig-cap: "Simulación y Validación de la Distribución Hipergeométrica"
+
+set.seed(123)
+N_sim <- 50
+K_sim <- 15
+n_sim <- 10
+num_sim <- 10000
+
+# Simular datos hipergeométricos
+datos_simulados <- rhyper(num_sim, m = K_sim, n = N_sim - K_sim, k = n_sim)
+
+# Calcular medidas empíricas
+media_empirica <- mean(datos_simulados)
+varianza_empirica <- var(datos_simulados)
+
+# Calcular medidas teóricas
+teorico <- hipergeo_measures(N_sim, K_sim, n_sim)
+
+# Comparación
+comparacion <- data.frame(
+  Medida = c("Media", "Varianza"),
+  Teórico = c(teorico$esperanza, teorico$varianza),
+  Empírico = c(media_empirica, varianza_empirica),
+  Diferencia = c(
+    abs(teorico$esperanza - media_empirica),
+    abs(teorico$varianza - varianza_empirica)
+  )
+)
+
+knitr::kable(comparacion, digits = 4, 
+             caption = "Comparación entre Valores Teóricos y Empíricos")
+
+# Graficar histograma vs distribución teórica
+x_teorico <- 0:n_sim
+y_teorico <- dhyper(x_teorico, m = K_sim, n = N_sim - K_sim, k = n_sim)
+
+ggplot() +
+  geom_histogram(
+    data = data.frame(x = datos_simulados),
+    aes(x = x, y = ..density..),
+    bins = n_sim + 1,
+    fill = "lightpink",
+    alpha = 0.7
+  ) +
+  geom_line(
+    data = data.frame(x = x_teorico, y = y_teorico),
+    aes(x = x, y = y),
+    color = "blue",
+    linewidth = 1
+  ) +
+  geom_point(
+    data = data.frame(x = x_teorico, y = y_teorico),
+    aes(x = x, y = y),
+    color = "yellow",
+    size = 2
+  ) +
+  labs(title = "Distribución Hipergeométrica: Simulación vs Teórica",
+       subtitle = paste("N =", N_sim, ", K =", K_sim, ", n =", n_sim),
+       x = "Número de éxitos en la muestra",
+       y = "Densidad") +
+  theme_minimal()
+```
+
+## 4.6 Ejemplos Aplicados
+
+**Ejemplo 1: Control de Calidad**
+
+En un lote de 100 artículos, 10 son defectuosos. Se extrae una muestra aleatoria de 5 artículos. Calcular la probabilidad de encontrar exactamente 2 defectuosos.
+
+```{r}
+#| label: ejemplo-calidad
+#| echo: true
+
+N_ej1 <- 100
+K_ej1 <- 10
+n_ej1 <- 5
+x_ej1 <- 2
+
+prob_exacta <- dhyper(x_ej1, m = K_ej1, n = N_ej1 - K_ej1, k = n_ej1)
+cat("Probabilidad de encontrar exactamente", x_ej1, "defectuosos en muestra de", n_ej1, ":\n")
+cat("P(X =", x_ej1, ") =", round(prob_exacta, 4), "\n")
+```
+
+**Ejemplo 2: Muestreo Biológico**
+
+En un estanque con 50 peces, 15 están marcados. Si se capturan 8 peces al azar, ¿cuál es la probabilidad de capturar al menos 3 peces marcados?
+
+```{r}
+#| label: ejemplo-biologia
+#| echo: true
+
+N_ej2 <- 50
+K_ej2 <- 15
+n_ej2 <- 8
+
+# P(X >= 3) = 1 - P(X <= 2)
+prob_al_menos_3 <- 1 - phyper(2, m = K_ej2, n = N_ej2 - K_ej2, k = n_ej2)
+cat("Probabilidad de capturar al menos 3 peces marcados:\n")
+cat("P(X ≥ 3) =", round(prob_al_menos_3, 4), "\n")
+```
+
+## 4.7 Ejercicios Propuestos
+
+**Ejercicio 1: Aplicación en Control de Calidad**
+
+**344.** Se pone a la venta un lote de 100 artículos de los cuales 10 son defectuosos. Un comprador extrae una muestra al azar de 5 artículos y decide que si encuentra 2 o más defectuosos, entonces no compra el lote. Calcule la probabilidad de que la compra se efectúe.
+
+```{r}
+#| label: solucion-ejercicio1
+#| echo: false
+
+N_ej <- 100
+K_ej <- 10
+n_ej <- 5
+
+# La compra se efectúa si encuentra 0 o 1 defectuoso
+prob_compra <- phyper(1, m = K_ej, n = N_ej - K_ej, k = n_ej)
+
+cat("Solución Ejercicio 1:\n")
+cat("====================\n")
+cat("Parámetros: N =", N_ej, ", K =", K_ej, ", n =", n_ej, "\n")
+cat("La compra se efectúa si X ≤ 1 (0 o 1 defectuosos)\n")
+cat("P(compra) = P(X ≤ 1) =", round(prob_compra, 4), "\n")
+cat("Por lo tanto, la probabilidad de que la compra se efectúe es:", round(prob_compra, 4), "\n")
+```
+
+**Ejercicio 2: Convergencia a la Binomial**
+
+**342.** Demuestre que la distribución hipergeométrica converge a la binomial cuando el tamaño de la población tiende a infinito.
+
+**Solución conceptual:** Cuando $N \to \infty$ y $K \to \infty$ manteniendo $K/N = p$, el muestreo sin reemplazo se comporta como muestreo con reemplazo, ya que la probabilidad de éxito permanece aproximadamente constante en cada extracción.
+
+**Ejercicio 3: Relación con Bernoulli**
+
+**340.** Compruebe que la distribución $\text{hipergeo}(N, K, n)$ se reduce a la distribución $\text{Ber}(p)$ con $p = K/N$ cuando $n = 1$.
+
+```{r}
+#| label: solucion-ejercicio3
+#| echo: false
+
+cat("Solución Ejercicio 3:\n")
+cat("====================\n")
+cat("Cuando n = 1:\n")
+cat("f(0) = P(X = 0) = (N-K)/N = 1 - p\n")
+cat("f(1) = P(X = 1) = K/N = p\n")
+cat("Esto coincide exactamente con la distribución Bernoulli(p)\n")
+cat("donde p = K/N\n")
+```
+
+## 4.7 Implementación en R
+
+ **Funciones Principales**
+
+- `dhyper(x, m, n, k)`: Función de masa de probabilidad
+- `phyper(q, m, n, k)`: Función de distribución acumulada
+- `qhyper(p, m, n, k)`: Función cuantil
+- `rhyper(nn, m, n, k)`: Generación de números aleatorios
+
+Donde:
+- `m` = número de éxitos en la población (K)
+- `n` = número de fracasos en la población (N - K)  
+- `k` = tamaño de la muestra (n)
+
+```{r}
+#| label: funciones-r
+#| echo: true
+
+# Ejemplo de uso de las funciones
+N <- 20
+K <- 7
+n <- 5
+
+cat("Ejemplo de uso de funciones en R:\n")
+cat("dhyper(2, 7, 13, 5) =", dhyper(2, 7, 13, 5), "\n")
+cat("phyper(2, 7, 13, 5) =", phyper(2, 7, 13, 5), "\n")
+cat("qhyper(0.5, 7, 13, 5) =", qhyper(0.5, 7, 13, 5), "\n")
+```
+
+## Conclusión
+
+La distribución hipergeométrica es una herramienta fundamental para modelar fenómenos donde se realiza muestreo sin reemplazo en poblaciones finitas, lo que impacta directamente las probabilidades de ocurrencia de los eventos estudiados.
+
+Gracias a su función de masa de probabilidad y parámetros claros, permite calcular con precisión las probabilidades de éxitos en la muestra, siendo especialmente útil en control de calidad, biología, y otras áreas aplicadas.
+
+Finalmente, la aproximación normal mediante el Teorema Central del Límite amplía sus aplicaciones a muestras grandes, agilizando los cálculos probabilísticos. La simulación y ejemplos aplicados refuerzan la validez del modelo y su utilidad en el análisis estadístico real.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

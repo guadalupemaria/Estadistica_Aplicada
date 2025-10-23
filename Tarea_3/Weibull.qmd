@@ -1,0 +1,964 @@
+---
+title: "Distribución weibull"
+editor: Maria Guadalupe Ramirez Calvillo
+---
+
+```{=html}
+<style>
+main.content {
+text-align: justify}
+</style>
+```
+
+```{r}
+#| include: false
+#| label: setup
+
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(plotly)
+
+```
+
+## Distribución Weibull
+
+La distribución de Weibull es una distribución de probabilidad continua utilizada para modelar datos de fiabilidad y tiempo hasta el fallo. Es muy flexible y puede adaptarse a una amplia gama de comportamientos, desde fallos tempranos hasta desgaste por uso. Se define por dos parámetros principales: un parámetro de forma $(alfa, \(\alpha \))$ y uno de escala $(beta, \(\beta \))$. 
+
+## Rincón (2014)Introducción a la probabilidad
+
+Una variable aleatoria continua $X$ tiene distribución Weibull con parámetros $\alpha > 0$ y $\lambda > 0$, denotado $X \sim \text{Weibull}(\alpha, \lambda)$, si su función de densidad de probabilidad es:
+
+$$f(x) = 
+\begin{cases} 
+\lambda \alpha (\lambda x)^{\alpha - 1} e^{-(\lambda x)^\alpha} & \text{si } x > 0, \\
+0 & \text{en otro caso}.
+\end{cases}$$
+
+Donde: - $\alpha$: parámetro de forma (shape) - $\lambda$: parámetro de escala (scale)
+
+```{r}
+#| label: pdf-weibull
+#| fig-cap: "Función de Densidad de Probabilidad de la Distribución Weibull"
+
+library(ggplot2)
+library(dplyr)
+
+# Crear datos para diferentes parámetros
+x <- seq(0, 3, length.out = 1000)
+
+# Combinaciones de parámetros
+parametros <- expand.grid(
+  alpha = c(0.5, 1, 2, 3),
+  lambda = c(0.5, 1, 2)
+)
+
+df <- data.frame()
+for(i in 1:nrow(parametros)) {
+  alpha <- parametros$alpha[i]
+  lambda <- parametros$lambda[i]
+  y <- dweibull(x, shape = alpha, scale = 1/lambda)
+  df <- rbind(df, data.frame(
+    x = x, 
+    y = y, 
+    alpha = alpha,
+    lambda = lambda,
+    curva = paste0("α=", alpha, ", λ=", lambda)
+  ))
+}
+
+# Graficar
+ggplot(df, aes(x = x, y = y, color = as.factor(alpha), linetype = as.factor(lambda))) +
+  geom_line(linewidth = 1) +
+  labs(title = "Función de Densidad de Probabilidad Weibull",
+       x = "x", 
+       y = "f(x)",
+       color = "Parámetro de forma (α)",
+       linetype = "Parámetro de escala (λ)") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  facet_wrap(~alpha, scales = "free_y", labeller = label_both)
+```
+
+## Efecto de los Parámetros
+
+-   **Parámetro de forma (**$\alpha$): Controla la forma de la distribución
+    -   $\alpha < 1$: Tasa de falla decreciente
+    -   $\alpha = 1$: Distribución exponencial (tasa de falla constante)
+    -   $\alpha > 1$: Tasa de falla creciente
+-   **Parámetro de escala (**$\lambda$): Controla la dispersión de la distribución
+
+## Función de Distribución Acumulada
+La función de distribución acumulada para $X \sim \text{Weibull}(\alpha, \lambda)$ es:
+
+$$F(x) = P(X \leq x) = 1 - e^{-(\lambda x)^\alpha}, \quad x > 0$$
+
+```{r}
+#| label: cdf-weibull
+#| fig-cap: "Función de Distribución Acumulada de la Distribución Weibull"
+
+# Calcular CDF para diferentes parámetros
+df_cdf <- data.frame()
+for(i in 1:nrow(parametros)) {
+  alpha <- parametros$alpha[i]
+  lambda <- parametros$lambda[i]
+  y_cdf <- pweibull(x, shape = alpha, scale = 1/lambda)
+  df_cdf <- rbind(df_cdf, data.frame(
+    x = x, 
+    y = y_cdf, 
+    alpha = alpha,
+    lambda = lambda,
+    curva = paste0("α=", alpha, ", λ=", lambda)
+  ))
+}
+
+# Graficar CDF
+ggplot(df_cdf, aes(x = x, y = y, color = as.factor(alpha), linetype = as.factor(lambda))) +
+  geom_line(linewidth = 1) +
+  labs(title = "Función de Distribución Acumulada Weibull",
+       x = "x", 
+       y = "F(x) = P(X ≤ x)",
+       color = "Parámetro de forma (α)",
+       linetype = "Parámetro de escala (λ)") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "black") +
+  annotate("text", x = 2.5, y = 0.55, label = "Mediana", color = "black")
+```
+
+## Función de Supervivencia
+
+La función de supervivencia (complemento de la CDF) es:
+
+$$S(x) = P(X > x) = e^{-(\lambda x)^\alpha}, \quad x > 0$$
+
+## Parámetros y Medidas Descriptivas
+
+**Esperanza Matemática**
+
+$$E(X) = \frac{1}{\lambda} \Gamma\left(1 + \frac{1}{\alpha}\right)$$
+
+**Varianza**
+
+$$\text{Var}(X) = \frac{1}{\lambda^2} \left[ \Gamma\left(1 + \frac{2}{\alpha}\right) - \Gamma^2\left(1 + \frac{1}{\alpha}\right) \right]$$
+
+**Mediana**
+
+$$\text{Mediana} = \frac{1}{\lambda} (\ln 2)^{1/\alpha}$$
+
+**Moda**
+
+$$\text{Moda} = \frac{1}{\lambda} \left(\frac{\alpha - 1}{\alpha}\right)^{1/\alpha}, \quad \text{para } \alpha > 1$$
+
+```{r}
+#| label: medidas-weibull
+#| fig-cap: "Medidas Descriptivas de la Distribución Weibull"
+
+# Función para calcular medidas de Weibull
+weibull_measures <- function(alpha, lambda) {
+  esperanza <- (1/lambda) * gamma(1 + 1/alpha)
+  varianza <- (1/lambda^2) * (gamma(1 + 2/alpha) - gamma(1 + 1/alpha)^2)
+  mediana <- (1/lambda) * (log(2))^(1/alpha)
+  moda <- ifelse(alpha > 1, (1/lambda) * ((alpha - 1)/alpha)^(1/alpha), 0)
+  
+  return(list(
+    esperanza = esperanza,
+    varianza = varianza,
+    desviacion = sqrt(varianza),
+    mediana = mediana,
+    moda = moda
+  ))
+}
+
+# Calcular para diferentes parámetros
+resultados <- data.frame()
+alphas <- c(0.5, 1, 2, 3)
+lambda <- 1
+
+for(alpha in alphas) {
+  medidas <- weibull_measures(alpha, lambda)
+  resultados <- rbind(resultados, data.frame(
+    alpha = alpha,
+    lambda = lambda,
+    esperanza = round(medidas$esperanza, 4),
+    varianza = round(medidas$varianza, 4),
+    desviacion = round(medidas$desviacion, 4),
+    mediana = round(medidas$mediana, 4),
+    moda = round(medidas$moda, 4)
+  ))
+}
+
+# Mostrar tabla
+knitr::kable(resultados, caption = "Medidas Descriptivas para Weibull(α, λ=1)")
+```
+
+## Simulación y Comparación con Parámetros Teóricos
+
+```{r}
+#| label: simulacion-weibull
+#| fig-cap: "Simulación y Comparación con Parámetros Teóricos"
+
+set.seed(123)  # Para reproducibilidad
+
+# Parámetros para simulación
+alpha_sim <- 2
+lambda_sim <- 1.5
+n <- 1000
+n_muestras <- 1000
+
+# Simular una muestra grande
+muestra <- rweibull(n, shape = alpha_sim, scale = 1/lambda_sim)
+
+# Calcular medidas teóricas
+teorico <- weibull_measures(alpha_sim, lambda_sim)
+
+# Calcular medidas empíricas
+empirico <- list(
+  esperanza = mean(muestra),
+  varianza = var(muestra),
+  desviacion = sd(muestra),
+  mediana = median(muestra)
+)
+
+# Crear data frame para comparación
+comparacion <- data.frame(
+  Medida = c("Esperanza", "Varianza", "Desviación Estándar", "Mediana"),
+  Teórico = c(teorico$esperanza, teorico$varianza, teorico$desviacion, teorico$mediana),
+  Empírico = c(empirico$esperanza, empirico$varianza, empirico$desviacion, empirico$mediana),
+  Diferencia = c(
+    empirico$esperanza - teorico$esperanza,
+    empirico$varianza - teorico$varianza,
+    empirico$desviacion - teorico$desviacion,
+    empirico$mediana - teorico$mediana
+  )
+)
+
+# Mostrar comparación
+knitr::kable(comparacion, digits = 4, 
+             caption = "Comparación entre Parámetros Teóricos y Empíricos")
+
+# Graficar histograma vs densidad teórica
+ggplot(data.frame(x = muestra), aes(x = x)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "pink", alpha = 0.7) +
+  geom_line(data = data.frame(
+    x = seq(0, max(muestra), length.out = 1000),
+    y = dweibull(seq(0, max(muestra), length.out = 1000), 
+                 shape = alpha_sim, scale = 1/lambda_sim)
+  ), aes(x = x, y = y), color = "blue", linewidth = 1) +
+  labs(title = "Comparación: Histograma vs Densidad Teórica",
+       subtitle = paste("Weibull(α =", alpha_sim, ", λ =", lambda_sim, ")"),
+       x = "x", 
+       y = "Densidad") +
+  theme_minimal()
+```
+
+## Algunos ejemplos Prácticos
+
+## Ejemplo 1: Tiempo de Vida de Componentes Electrónicos
+
+```{r}
+#| label: ejemplo-electronica
+#| fig-cap: "Aplicación: Tiempo de Vida de Componentes Electrónicos"
+
+# Simular datos de tiempo de vida de componentes
+set.seed(456)
+tiempo_vida <- rweibull(200, shape = 1.8, scale = 1/0.002)
+
+# Calcular probabilidades prácticas
+prob_1_ano <- pweibull(365, shape = 1.8, scale = 1/0.002)
+prob_2_anos <- pweibull(730, shape = 1.8, scale = 1/0.002)
+supervivencia_1_ano <- 1 - prob_1_ano
+
+cat("Análisis de Confiabilidad de Componentes:\n")
+cat("==========================================\n")
+cat("Probabilidad de falla antes de 1 año:", round(prob_1_ano, 4), "\n")
+cat("Probabilidad de falla antes de 2 años:", round(prob_2_anos, 4), "\n")
+cat("Probabilidad de supervivencia después de 1 año:", round(supervivencia_1_ano, 4), "\n")
+
+# Graficar función de supervivencia
+tiempo <- seq(0, 1000, length.out = 1000)
+supervivencia <- 1 - pweibull(tiempo, shape = 1.8, scale = 1/0.002)
+
+ggplot(data.frame(tiempo = tiempo, supervivencia = supervivencia), 
+       aes(x = tiempo, y = supervivencia)) +
+  geom_line(color = "magenta", linewidth = 1) +
+  geom_vline(xintercept = 365, linetype = "dashed", color = "blue") +
+  geom_hline(yintercept = supervivencia_1_ano, linetype = "dashed", color = "blue") +
+  annotate("point", x = 365, y = supervivencia_1_ano, color = "black", size = 3) +
+  labs(title = "Función de Supervivencia - Componentes Electrónicos",
+       x = "Tiempo (días)", 
+       y = "Probabilidad de Supervivencia") +
+  theme_minimal()
+```
+
+## Ejemplo 2: Análisis de Velocidad del Viento
+
+```{r}
+#| label: ejemplo-viento
+#| fig-cap: "Aplicación: Distribución de Velocidad del Viento"
+
+# Simular datos de velocidad del viento (distribución Rayleigh como caso especial de Weibull)
+set.seed(789)
+velocidad_viento <- rweibull(500, shape = 2, scale = 1/0.4)  # Rayleigh
+
+# Ajustar distribución Weibull
+ajuste <- MASS::fitdistr(velocidad_viento, "weibull")
+alpha_ajustado <- ajuste$estimate["shape"]
+lambda_ajustado <- ajuste$estimate["scale"]
+
+cat("Análisis de Velocidad del Viento:\n")
+cat("=================================\n")
+cat("Parámetro de forma estimado (α):", round(alpha_ajustado, 4), "\n")
+cat("Parámetro de escala estimado (λ):", round(lambda_ajustado, 4), "\n")
+
+# Graficar ajuste
+ggplot(data.frame(velocidad = velocidad_viento), aes(x = velocidad)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "lightblue", alpha = 0.7) +
+  geom_line(data = data.frame(
+    x = seq(0, max(velocidad_viento), length.out = 1000),
+    y = dweibull(seq(0, max(velocidad_viento), length.out = 1000), 
+                 shape = alpha_ajustado, scale = lambda_ajustado)
+  ), aes(x = x, y = y), color = "pink", linewidth = 1) +
+  labs(title = "Distribución de Velocidad del Viento - Ajuste Weibull",
+       x = "Velocidad (m/s)", 
+       y = "Densidad") +
+  theme_minimal()
+```
+
+## Verificación del Teorema Central del Límite
+
+```{r}
+#| label: tcl-weibull
+#| fig-cap: "Verificación del Teorema Central del Límite para la Distribución Weibull"
+
+set.seed(321)
+
+# Parámetros
+alpha_tcl <- 1.5
+lambda_tcl <- 2
+tamanos_muestra <- c(5, 15, 30, 50)
+n_simulaciones <- 1000
+
+# Simular promedios para diferentes tamaños de muestra
+resultados_tcl <- data.frame()
+
+for(n in tamanos_muestra) {
+  promedios <- replicate(n_simulaciones, {
+    mean(rweibull(n, shape = alpha_tcl, scale = 1/lambda_tcl))
+  })
+  
+  resultados_tcl <- rbind(resultados_tcl, 
+                         data.frame(
+                           n = n,
+                           promedio = promedios
+                         ))
+}
+
+# Calcular parámetros teóricos
+mu <- (1/lambda_tcl) * gamma(1 + 1/alpha_tcl)
+sigma2 <- (1/lambda_tcl^2) * (gamma(1 + 2/alpha_tcl) - gamma(1 + 1/alpha_tcl)^2)
+
+# Graficar distribuciones de promedios
+ggplot(resultados_tcl, aes(x = promedio)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "lightpink", alpha = 0.7) +
+  geom_density(color = "black", linewidth = 1) +
+  stat_function(fun = dnorm, 
+                args = list(mean = mu, sd = sqrt(sigma2/as.numeric(unique(resultados_tcl$n)[1]))), 
+                color = "orange", linewidth = 1, linetype = "dashed") +
+  facet_wrap(~n, scales = "free", labeller = label_both) +
+  labs(title = "Teorema Central del Límite - Distribución Weibull",
+       subtitle = paste("Línea roja: Distribución Normal Teórica (μ =", round(mu, 3), ")"),
+       x = "Promedio Muestral", 
+       y = "Densidad") +
+  theme_minimal()
+
+# Prueba de normalidad para n grande
+cat("Prueba de Normalidad para n = 50:\n")
+cat("=================================\n")
+shapiro_test <- shapiro.test(resultados_tcl$promedio[resultados_tcl$n == 50])
+cat("Estadístico W:", round(shapiro_test$statistic, 4), "\n")
+cat("Valor p:", round(shapiro_test$p.value, 4), "\n")
+```
+
+## Ejercicios Propuestos del libro
+
+**Ejercicio 1: Cálculo de Probabilidades**
+
+Sea $X \sim \text{Weibull}(\alpha = 2, \lambda = 0.5)$. Calcule:
+
+a)  $P(X \leq 3)$\
+b)  $P(1 \leq X \leq 4)$\
+c)  El valor $x$ tal que $P(X \leq x) = 0.75$
+
+```{r}
+#| label: solucion-ejercicio1
+#| echo: false
+
+# Solución
+cat("Solución Ejercicio 1:\n")
+cat("=====================\n")
+cat("a) P(X ≤ 3) =", round(pweibull(3, shape = 2, scale = 1/0.5), 4), "\n")
+cat("b) P(1 ≤ X ≤ 4) =", 
+    round(pweibull(4, shape = 2, scale = 1/0.5) - pweibull(1, shape = 2, scale = 1/0.5), 4), "\n")
+cat("c) Percentil 75 =", round(qweibull(0.75, shape = 2, scale = 1/0.5), 4), "\n")
+```
+
+ **Ejercicio 2: Interpretación de Parámetros**
+
+Explique cómo cambia la forma de la distribución Weibull cuando:
+
+a)  $\alpha$ aumenta manteniendo $\lambda$ constante\
+b)  $\lambda$ aumenta manteniendo $\alpha$ constante
+
+```{r}
+#| label: interpretacion-parametros
+#| fig-cap: "Efecto de los Parámetros en la Distribución Weibull"
+
+library(ggplot2)
+library(patchwork)
+
+# Configuración para los gráficos
+x <- seq(0, 3, length.out = 1000)
+
+#### PARTE A: Efecto de α con λ constante ####
+lambda_fijo <- 1
+alphas <- c(0.5, 1, 1.5, 2, 2.5, 3)
+
+df_alpha <- data.frame()
+for(alpha in alphas) {
+  y <- dweibull(x, shape = alpha, scale = 1/lambda_fijo)
+  df_alpha <- rbind(df_alpha, data.frame(
+    x = x,
+    y = y,
+    alpha = alpha,
+    grupo = "Variación de α"
+  ))
+}
+
+plot_alpha <- ggplot(df_alpha, aes(x = x, y = y, color = as.factor(alpha))) +
+  geom_line(linewidth = 1) +
+  labs(title = "a) Efecto del parámetro de forma α (λ = 1 constante)",
+       x = "x", 
+       y = "f(x)",
+       color = "Valor de α") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "bottom")
+
+#### PARTE B: Efecto de λ con α constante ####
+alpha_fijo <- 2
+lambdas <- c(0.5, 1, 1.5, 2, 2.5)
+
+df_lambda <- data.frame()
+for(lambda in lambdas) {
+  y <- dweibull(x, shape = alpha_fijo, scale = 1/lambda)
+  df_lambda <- rbind(df_lambda, data.frame(
+    x = x,
+    y = y,
+    lambda = lambda,
+    grupo = "Variación de λ"
+  ))
+}
+
+plot_lambda <- ggplot(df_lambda, aes(x = x, y = y, color = as.factor(lambda))) +
+  geom_line(linewidth = 1) +
+  labs(title = "b) Efecto del parámetro de escala λ (α = 2 constante)",
+       x = "x", 
+       y = "f(x)",
+       color = "Valor de λ") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Dark2") +
+  theme(legend.position = "bottom")
+
+# Combinar gráficos
+plot_alpha / plot_lambda
+```
+
+```{r}
+#| label: medidas-parametros
+#| fig-cap: "Medidas Descriptivas vs Parámetros"
+
+# Calcular medidas para diferentes valores de parámetros
+weibull_measures <- function(alpha, lambda) {
+  esperanza <- (1/lambda) * gamma(1 + 1/alpha)
+  varianza <- (1/lambda^2) * (gamma(1 + 2/alpha) - gamma(1 + 1/alpha)^2)
+  mediana <- (1/lambda) * (log(2))^(1/alpha)
+  moda <- ifelse(alpha > 1, (1/lambda) * ((alpha - 1)/alpha)^(1/alpha), 0)
+  
+  return(list(
+    esperanza = esperanza,
+    varianza = varianza,
+    desviacion = sqrt(varianza),
+    mediana = mediana,
+    moda = moda
+  ))
+}
+
+# Datos para variación de α
+resultados_alpha <- data.frame()
+for(alpha in seq(0.5, 3, by = 0.1)) {
+  medidas <- weibull_measures(alpha, 1)
+  resultados_alpha <- rbind(resultados_alpha, data.frame(
+    parametro = alpha,
+    tipo = "alpha",
+    esperanza = medidas$esperanza,
+    mediana = medidas$mediana,
+    moda = medidas$moda
+  ))
+}
+
+# Datos para variación de λ
+resultados_lambda <- data.frame()
+for(lambda in seq(0.5, 3, by = 0.1)) {
+  medidas <- weibull_measures(2, lambda)
+  resultados_lambda <- rbind(resultados_lambda, data.frame(
+    parametro = lambda,
+    tipo = "lambda",
+    esperanza = medidas$esperanza,
+    mediana = medidas$mediana,
+    moda = medidas$moda
+  ))
+}
+
+# Graficar medidas vs parámetros
+p1 <- ggplot(resultados_alpha, aes(x = parametro)) +
+  geom_line(aes(y = esperanza, color = "Esperanza"), linewidth = 1) +
+  geom_line(aes(y = mediana, color = "Mediana"), linewidth = 1) +
+  geom_line(aes(y = moda, color = "Moda"), linewidth = 1) +
+  labs(title = "Medidas vs Parámetro α (λ = 1)",
+       x = "α", 
+       y = "Valor",
+       color = "Medida") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1")
+
+p2 <- ggplot(resultados_lambda, aes(x = parametro)) +
+  geom_line(aes(y = esperanza, color = "Esperanza"), linewidth = 1) +
+  geom_line(aes(y = mediana, color = "Mediana"), linewidth = 1) +
+  geom_line(aes(y = moda, color = "Moda"), linewidth = 1) +
+  labs(title = "Medidas vs Parámetro λ (α = 2)",
+       x = "λ", 
+       y = "Valor",
+       color = "Medida") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1")
+
+p1 / p2
+```
+
+```{r}
+#| label: solucion-ejercicio2
+#| echo: false
+
+cat("Solución Ejercicio 2:\n")
+cat("=====================\n\n")
+
+cat("a) EFECTO DEL PARÁMETRO DE FORMA α (con λ constante):\n")
+cat("----------------------------------------------------\n")
+cat("• α < 1: La distribución tiene forma de J invertida:\n")
+cat("  - Densidad máxima en x = 0\n")
+cat("  - Tasa de falla decreciente en el tiempo\n")
+cat("  - Apropiada para componentes con 'mortalidad infantil'\n\n")
+
+cat("• α = 1: La distribución se reduce a la exponencial:\n")
+cat("  - f(x) = λ e^{-λx}\n")
+cat("  - Tasa de falla constante\n")
+cat("  - Proceso sin memoria\n\n")
+
+cat("• α > 1: La distribución tiene forma de campana asimétrica:\n")
+cat("  - Moda positiva (se desplaza a la derecha cuando α aumenta)\n")
+cat("  - Tasa de falla creciente\n")
+cat("  - Apropiada para componentes que se desgastan con el tiempo\n\n")
+
+cat("• α = 2: Caso especial - Distribución de Rayleigh\n")
+cat("• α ≈ 3.6: La distribución se aproxima a la normal\n\n")
+
+cat("Resumen del efecto de α:\n")
+cat("- α controla la forma fundamental de la distribución\n")
+cat("- Afecta la tasa de falla: decreciente (α<1), constante (α=1), creciente (α>1)\n")
+cat("- Modifica la simetría y la curtosis de la distribución\n")
+cat("- Determina la posición de la moda\n\n")
+
+cat("b) EFECTO DEL PARÁMETRO DE ESCALA λ (con α constante):\n")
+cat("-----------------------------------------------------\n")
+cat("• λ actúa como parámetro de escala:\n")
+cat("  - Valores grandes de λ comprimen la distribución hacia el origen\n")
+cat("  - Valores pequeños de λ expanden la distribución hacia la derecha\n\n")
+
+cat("• Efecto en medidas de tendencia central:\n")
+cat("  - E(X) = (1/λ) Γ(1 + 1/α) → inversamente proporcional a λ\n")
+cat("  - Mediana = (1/λ) (ln 2)^{1/α} → inversamente proporcional a λ\n")
+cat("  - Moda = (1/λ) ((α-1)/α)^{1/α} (para α > 1) → inversamente proporcional a λ\n\n")
+
+cat("• Efecto en dispersión:\n")
+cat("  - Var(X) = (1/λ²) [Γ(1 + 2/α) - Γ²(1 + 1/α)] → inversamente proporcional a λ²\n")
+cat("  - La desviación estándar es inversamente proporcional a λ\n\n")
+
+cat("Interpretación práctica:\n")
+cat("- λ está relacionado con la 'vida característica' del componente\n")
+cat("- En confiabilidad: λ alto indica componentes con vida útil más corta\n")
+cat("- λ representa el inverso de la escala natural de la variable\n\n")
+
+cat("EJEMPLO NUMÉRICO:\n")
+cat("Para α = 2 constante:\n")
+
+lambda_ejemplos <- c(0.5, 1, 2)
+for(lambda in lambda_ejemplos) {
+  medidas <- weibull_measures(2, lambda)
+  cat(sprintf("λ = %.1f: E(X) = %.3f, Mediana = %.3f, Moda = %.3f\n", 
+              lambda, medidas$esperanza, medidas$mediana, medidas$moda))
+}
+```
+
+## Visualzación del ejercicio 2
+
+```{r}
+#| label: resumen-parametros
+#| fig-cap: "Resumen del Efecto de los Parámetros Weibull"
+
+# Crear una visualización resumen
+resumen_data <- expand.grid(
+  alpha = c(0.5, 1, 2, 3),
+  lambda = c(0.5, 1, 2)
+)
+
+df_resumen <- data.frame()
+for(i in 1:nrow(resumen_data)) {
+  alpha <- resumen_data$alpha[i]
+  lambda <- resumen_data$lambda[i]
+  y <- dweibull(x, shape = alpha, scale = 1/lambda)
+  df_resumen <- rbind(df_resumen, data.frame(
+    x = x,
+    y = y,
+    alpha = alpha,
+    lambda = lambda,
+    curva = paste0("α=", alpha, ", λ=", lambda)
+  ))
+}
+
+ggplot(df_resumen, aes(x = x, y = y, color = as.factor(alpha), linetype = as.factor(lambda))) +
+  geom_line(linewidth = 1) +
+  labs(title = "Resumen: Efecto Combinado de α y λ en la Distribución Weibull",
+       x = "x", 
+       y = "f(x)",
+       color = "Parámetro de forma (α)",
+       linetype = "Parámetro de escala (λ)") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  facet_wrap(~alpha, scales = "free", labeller = label_both) +
+  theme(legend.position = "bottom")
+```
+
+## Ejercicio 3: Aplicación Práctica
+
+Simule 1000 observaciones de una distribución Weibull con $\alpha = 1.2$ y $\lambda = 0.8$, y:
+
+a)  Calcule la media y varianza muestral\
+b)  Compare con los valores teóricos\
+c)  Grafique el histograma junto con la densidad teórica
+
+```{r}
+#| label: ejercicio3-aplicacion
+#| fig-cap: "Simulación Weibull(α=1.2, λ=0.8) - Histograma vs Densidad Teórica"
+
+
+set.seed(369)  
+
+alpha <- 1.2
+lambda <- 0.8
+n <- 1000
+
+
+datos_simulados <- rweibull(n, shape = alpha, scale = 1/lambda)
+
+media_muestral <- mean(datos_simulados)
+varianza_muestral <- var(datos_simulados)
+desviacion_muestral <- sd(datos_simulados)
+
+# b) Calcular valores teóricos
+weibull_measures <- function(alpha, lambda) {
+  esperanza <- (1/lambda) * gamma(1 + 1/alpha)
+  varianza <- (1/lambda^2) * (gamma(1 + 2/alpha) - gamma(1 + 1/alpha)^2)
+  mediana <- (1/lambda) * (log(2))^(1/alpha)
+  moda <- ifelse(alpha > 1, (1/lambda) * ((alpha - 1)/alpha)^(1/alpha), 0)
+  
+  return(list(
+    esperanza = esperanza,
+    varianza = varianza,
+    desviacion = sqrt(varianza),
+    mediana = mediana,
+    moda = moda
+  ))
+}
+
+teorico <- weibull_measures(alpha, lambda)
+
+
+x_teorico <- seq(0, max(datos_simulados) * 1.2, length.out = 1000)
+y_teorico <- dweibull(x_teorico, shape = alpha, scale = 1/lambda)
+
+ggplot() +
+  geom_histogram(
+    data = data.frame(x = datos_simulados),
+    aes(x = x, y = ..density..),
+    bins = 30,
+    fill = "lightpink",
+    color = "black",
+    alpha = 0.7
+  ) +
+  geom_line(
+    data = data.frame(x = x_teorico, y = y_teorico),
+    aes(x = x, y = y),
+    color = "red",
+    linewidth = 1.2,
+    linetype = "solid"
+  ) +
+  geom_vline(
+    xintercept = media_muestral,
+    color = "orange",
+    linewidth = 1,
+    linetype = "dashed"
+  ) +
+  geom_vline(
+    xintercept = teorico$esperanza,
+    color = "darkred",
+    linewidth = 1,
+    linetype = "dashed"
+  ) +
+  labs(
+    title = "Distribución Weibull - Datos Simulados vs Teóricos",
+    subtitle = paste("Weibull(α =", alpha, ", λ =", lambda, ") - n =", n),
+    x = "x",
+    y = "Densidad"
+  ) +
+  theme_minimal() +
+  annotate("text",
+           x = max(datos_simulados) * 0.7,
+           y = max(y_teorico) * 0.9,
+           label = paste("Media muestral:", round(media_muestral, 4),
+                        "\nMedia teórica:", round(teorico$esperanza, 4)),
+           color = "blue",
+           size = 4,
+           hjust = 0) +
+  scale_x_continuous(limits = c(0, max(datos_simulados) * 1.1))
+```
+
+## Comparación
+
+```{r}
+#| label: ejercicio3-comparacion
+#| fig-cap: "Comparación Detallada: Datos Simulados vs Distribución Teórica"
+
+
+comparacion_detallada <- data.frame(
+  Metrica = c("Media", "Varianza", "Desviación Estándar", "Mediana"),
+  Muestral = c(
+    media_muestral,
+    varianza_muestral,
+    desviacion_muestral,
+    median(datos_simulados)
+  ),
+  Teorico = c(
+    teorico$esperanza,
+    teorico$varianza,
+    teorico$desviacion,
+    teorico$mediana
+  ),
+  Diferencia = c(
+    media_muestral - teorico$esperanza,
+    varianza_muestral - teorico$varianza,
+    desviacion_muestral - teorico$desviacion,
+    median(datos_simulados) - teorico$mediana
+  )
+)
+
+
+knitr::kable(
+  comparacion_detallada,
+  digits = 4,
+  caption = "Comparación entre Estadísticas Muestrales y Valores Teóricos"
+)
+```
+
+```{r}
+#| label: ejercicio3-qqplot
+#| fig-cap: "Gráfico Q-Q para Verificar el Ajuste Weibull"
+
+
+qq_data <- data.frame(
+  Teorico = qweibull(ppoints(n), shape = alpha, scale = 1/lambda),
+  Muestral = sort(datos_simulados)
+)
+
+ggplot(qq_data, aes(x = Teorico, y = Muestral)) +
+  geom_point(alpha = 0.6, color = "darkmagenta") +
+  geom_abline(slope = 1, intercept = 0, color = "green", linewidth = 1) +
+  labs(
+    title = "Gráfico Q-Q: Weibull(α=1.2, λ=0.8)",
+    x = "Cuantiles Teóricos",
+    y = "Cuantiles Muestrales"
+  ) +
+  theme_minimal() +
+  annotate("text",
+           x = min(qq_data$Teorico),
+           y = max(qq_data$Muestral) * 0.9,
+           label = "Línea de referencia y = x",
+           color = "blue",
+           hjust = 0)
+```
+
+```{r}
+#| label: solucion-ejercicio3
+#| echo: false
+
+cat("Solución Ejercicio 3:\n")
+cat("=====================\n\n")
+
+cat("PARÁMETROS DE LA SIMULACIÓN:\n")
+cat("-----------------------------\n")
+cat("α =", alpha, "(parámetro de forma)\n")
+cat("λ =", lambda, "(parámetro de escala)\n")
+cat("n =", n, "(tamaño de muestra)\n\n")
+
+cat("a) ESTADÍSTICAS MUESTRALES:\n")
+cat("---------------------------\n")
+cat("Media muestral:", round(media_muestral, 4), "\n")
+cat("Varianza muestral:", round(varianza_muestral, 4), "\n")
+cat("Desviación estándar muestral:", round(desviacion_muestral, 4), "\n")
+cat("Mediana muestral:", round(median(datos_simulados), 4), "\n\n")
+
+cat("b) COMPARACIÓN CON VALORES TEÓRICOS:\n")
+cat("-----------------------------------\n")
+cat("Media teórica:", round(teorico$esperanza, 4), "\n")
+cat("Varianza teórica:", round(teorico$varianza, 4), "\n")
+cat("Desviación estándar teórica:", round(teorico$desviacion, 4), "\n")
+cat("Mediana teórica:", round(teorico$mediana, 4), "\n\n")
+
+cat("DIFERENCIAS (Muestral - Teórico):\n")
+cat("---------------------------------\n")
+cat("Diferencia en media:", round(media_muestral - teorico$esperanza, 4), "\n")
+cat("Diferencia en varianza:", round(varianza_muestral - teorico$varianza, 4), "\n")
+cat("Diferencia en desviación estándar:", round(desviacion_muestral - teorico$desviacion, 4), "\n")
+cat("Diferencia en mediana:", round(median(datos_simulados) - teorico$mediana, 4), "\n\n")
+
+cat("c) ANÁLISIS DEL HISTOGRAMA:\n")
+cat("---------------------------\n")
+cat("• El histograma muestra la distribución empírica de los datos simulados\n")
+cat("• La línea roja representa la densidad teórica Weibull(α=1.2, λ=0.8)\n")
+cat("• Las líneas verticales punteadas indican:\n")
+cat("  - Azul: media muestral\n")
+cat("  - Rojo oscuro: media teórica\n")
+cat("• El buen ajuste visual confirma que la simulación es correcta\n\n")
+
+cat("INTERPRETACIÓN:\n")
+cat("---------------\n")
+cat("Con α = 1.2 > 1, la distribución tiene:\n")
+cat("• Tasa de falla creciente en el tiempo\n")
+cat("• Forma asimétrica con cola hacia la derecha\n")
+cat("• Moda positiva (no en cero)\n")
+cat("• Apropiada para modelar componentes con desgaste progresivo\n")
+
+cat("VERIFICACIÓN DEL AJUSTE:\n")
+cat("------------------------\n")
+cat("• El gráfico Q-Q muestra puntos cercanos a la línea y=x\n")
+cat("• Esto indica buen ajuste a la distribución Weibull teórica\n")
+cat("• Las pequeñas diferencias entre valores muestrales y teóricos\n")
+cat("  son consistentes con la variabilidad muestral esperada\n")
+```
+
+## Resumen del Ejercicio 3
+
+La simulación de 1000 observaciones de una distribución Weibull con parámetros $\alpha = 1.2$ y $\lambda = 0.8$ demuestra excelente concordancia entre los valores muestrales y teóricos. Las pequeñas diferencias observadas son atribuibles a la variabilidad muestral natural. El histograma junto con la densidad teórica y el gráfico Q-Q confirman el buen ajuste de los datos simulados a la distribución teórica especificada.
+
+### Ejercicio 4: Demostración de la Función de Distribución
+
+**405.** Sea ( X ) una variable aleatoria con distribución (\text{Weibull}(\alpha, \lambda)). Demuestre que la función de distribución es, para ( x \> 0 ),
+
+\[F(x) =
+
+\begin{cases} 
+1 - e^{-(\lambda x)^\alpha} & \text{si } x > 0, \\
+0 & \text{en otro caso}.
+\end{cases}
+
+\]
+
+## Solución ejercicio 5
+
+```{r}
+#| label: solucion-ejercicio5
+#| echo: false
+
+cat("Solución Ejercicio 5:\n")
+cat("=====================\n")
+cat("DEMOSTRACIÓN:\n\n")
+cat("Por definición, la función de distribución acumulada es:\n")
+cat("F(x) = P(X ≤ x) = ∫[desde -∞ hasta x] f(t) dt\n\n")
+cat("Para x > 0:\n")
+cat("F(x) = ∫[desde 0 hasta x] λ α (λt)^{α-1} e^{-(λt)^α} dt\n\n")
+cat("Hacemos el cambio de variable:\n")
+cat("u = (λt)^α ⇒ du = α λ (λt)^{α-1} dt = α λ^α t^{α-1} dt\n")
+cat("Pero note que: λ α (λt)^{α-1} = α λ^α t^{α-1}\n")
+cat("Por lo tanto: du = λ α (λt)^{α-1} dt\n\n")
+cat("Cuando t = 0 ⇒ u = 0\n")
+cat("Cuando t = x ⇒ u = (λx)^α\n\n")
+cat("Sustituyendo en la integral:\n")
+cat("F(x) = ∫[desde 0 hasta (λx)^α] e^{-u} du\n")
+cat("     = [-e^{-u}] evaluado de 0 a (λx)^α\n")
+cat("     = [-e^{-(λx)^α} - (-e^0)]\n")
+cat("     = 1 - e^{-(λx)^α}\n\n")
+cat("Para x ≤ 0, F(x) = 0 por definición de la función de densidad.\n")
+cat("Q.E.D.\n")
+```
+
+## Verificación numérica de la demostración:
+
+```{r}
+#| label: verificacion-demostracion
+#| fig-cap: "Verificación de la Función de Distribución Weibull"
+
+
+alpha <- 2
+lambda <- 1.5
+x_values <- seq(0, 3, length.out = 1000)
+
+
+F_teorico <- ifelse(x_values > 0, 1 - exp(-(lambda * x_values)^alpha), 0)
+
+
+F_integrado <- sapply(x_values, function(x) {
+  if(x <= 0) return(0)
+  integrate(function(t) {
+    dweibull(t, shape = alpha, scale = 1/lambda)
+  }, 0, x)$value
+})
+
+
+comparacion <- data.frame(
+  x = x_values,
+  Teórico = F_teorico,
+  Integrado = F_integrado,
+  Diferencia = abs(F_teorico - F_integrado)
+)
+
+cat("Verificación numérica - Diferencia máxima:", max(comparacion$Diferencia), "\n")
+
+
+ggplot(comparacion, aes(x = x)) +
+  geom_line(aes(y = Teórico, color = "Fórmula Demostrada"), linewidth = 1) +
+  geom_line(aes(y = Integrado, color = "Integración Numérica"), 
+            linetype = "dashed", linewidth = 0.8) +
+  labs(title = "Verificación de la Función de Distribución Weibull",
+       subtitle = paste("Weibull(α =", alpha, ", λ =", lambda, ")"),
+       x = "x", 
+       y = "F(x)",
+       color = "Método") +
+  theme_minimal() +
+  scale_color_manual(values = c("Fórmula Demostrada" = "blue", 
+                               "Integración Numérica" = "magenta"))
+```
+
+
+
+
